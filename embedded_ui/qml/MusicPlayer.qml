@@ -39,32 +39,35 @@ Rectangle {
         // Album Art
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 120
-            radius: 15
+            Layout.preferredHeight: 160  // Reduced to fit larger buttons
+            radius: 20
+            border.color: "#33ffffff"
+            border.width: 1
+            
             gradient: Gradient {
-                GradientStop { position: 0.0; color: "#6366f1" }
-                GradientStop { position: 1.0; color: "#8b5cf6" }
+                GradientStop { position: 0.0; color: "#4f46e5" } // Indigo-600
+                GradientStop { position: 1.0; color: "#0f172a" } // Slate-900 (matches bg roughly)
             }
             
             Text {
                 anchors.centerIn: parent
                 text: "♫"
                 color: "white"
-                font.pixelSize: 50
-                opacity: 0.6
+                font.pixelSize: 60
+                opacity: 0.3
             }
         }
 
         // Track Info
         Column {
             Layout.fillWidth: true
-            spacing: 4
+            spacing: 8  // More breathing room
             
             Text {
                 width: parent.width
                 text: root.mState.title || "No Track"
                 color: "white"
-                font.pixelSize: 16
+                font.pixelSize: 24  // Larger Title
                 font.bold: true
                 elide: Text.ElideRight
                 horizontalAlignment: Text.AlignHCenter
@@ -73,8 +76,9 @@ Rectangle {
             Text {
                 width: parent.width
                 text: root.mState.artist || "Unknown Artist"
-                color: "#9ca3af"
-                font.pixelSize: 13
+                color: "#94a3b8"
+                font.pixelSize: 16  // Larger Artist
+                font.letterSpacing: 1
                 elide: Text.ElideRight
                 horizontalAlignment: Text.AlignHCenter
             }
@@ -117,22 +121,28 @@ Rectangle {
         // Controls
         Row {
             Layout.alignment: Qt.AlignHCenter
-            spacing: 25
+            spacing: 15  // Tighter grouping
             
             // Previous
             Rectangle {
                 id: prevButton
-                width: 36
-                height: 36
-                radius: 18
-                color: "#374151"
-                border.color: "#4b5563"
+                width: 60
+                height: 60
+                radius: 16
+                color: "#1e293b" // Slate-800
+                border.color: "#33ffffff"
+                border.width: 1
+                
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: "#334155" }
+                    GradientStop { position: 1.0; color: "#0f172a" }
+                }
                 
                 Text {
                     anchors.centerIn: parent
                     text: "⏮"
-                    color: "#9ca3af"
-                    font.pixelSize: 16
+                    color: "white"
+                    font.pixelSize: 24
                 }
                 
                 MouseArea {
@@ -144,18 +154,32 @@ Rectangle {
             // Play/Pause
             Rectangle {
                 id: playButton
-                width: 46
-                height: 46
-                radius: 23
-                color: "#2563eb"
+                width: 80
+                height: 80
+                radius: 24
                 border.color: "#60a5fa"
-                border.width: 2
+                border.width: 1
+                
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: "#3b82f6" } // Blue-500
+                    GradientStop { position: 1.0; color: "#1d4ed8" } // Blue-700
+                }
+                
+                // Inner highlight
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: 2
+                    radius: parent.radius - 2
+                    color: "transparent"
+                    border.color: "#40ffffff"
+                    border.width: 1
+                }
                 
                 Text {
                     anchors.centerIn: parent
                     text: root.mState.is_playing ? "⏸" : "▶"
                     color: "white"
-                    font.pixelSize: 18
+                    font.pixelSize: 32
                 }
                 
                 MouseArea {
@@ -167,17 +191,23 @@ Rectangle {
             // Next
             Rectangle {
                 id: nextButton
-                width: 36
-                height: 36
-                radius: 18
-                color: "#374151"
-                border.color: "#4b5563"
+                width: 60
+                height: 60
+                radius: 16
+                color: "#1e293b"
+                border.color: "#33ffffff"
+                border.width: 1
+                
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: "#334155" }
+                    GradientStop { position: 1.0; color: "#0f172a" }
+                }
                 
                 Text {
                     anchors.centerIn: parent
                     text: "⏭"
-                    color: "#9ca3af"
-                    font.pixelSize: 16
+                    color: "white"
+                    font.pixelSize: 24
                 }
                 
                 MouseArea {

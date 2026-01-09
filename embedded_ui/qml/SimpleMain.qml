@@ -9,7 +9,10 @@ Rectangle {
     height: 720
     color: "#111827"
 
-    // Load the full Dashboard component
+    property bool isPinching: false
+    property bool isPinchingMap: false
+    property real lastCursorX: 0
+    property real lastCursorY: 0
     Dashboard {
         id: dashboard
         anchors.fill: parent
@@ -124,12 +127,13 @@ Rectangle {
     // --- Live Camera Feed Overlay ---
     Rectangle {
         id: cameraOverlay
-        width: 320
-        height: 240
+        width: 240
+        height: 180
         anchors.top: parent.top
-        anchors.right: parent.right
+        anchors.left: parent.left
         anchors.margins: 20
-        anchors.topMargin: 80 // Below header
+        anchors.topMargin: 100 // Inside Nav Box
+        anchors.leftMargin: 40
         color: "black"
         border.color: "white"
         border.width: 2
@@ -208,6 +212,53 @@ Rectangle {
         function onGestureDetected(gesture) {
             gestureDisplay.text = gesture;
             delayTimer.restart();
+            
+            if (gesture === "PINCH_CLICK") {
+                root.isPinching = true
+                root.isPinchingMap = false // Reset first
+                
+                if (dashboard.map) {
+                     var mapPos = dashboard.map.mapToItem(root, 0, 0)
+                     var cx = GestureController.cursorX * root.width
+                     var cy = GestureController.cursorY * root.height
+                     var mapW = dashboard.map.width
+                     var mapH = dashboard.map.height
+                     
+                     console.log("PINCH CHECK: Cursor(", cx, cy, ") MapBounds(", mapPos.x, mapPos.y, mapW, mapH, ")")
+                     
+                     if (cx >= mapPos.x && cx <= mapPos.x + mapW &&
+                         cy >= mapPos.y && cy <= mapPos.y + mapH) {
+                         console.log(" -> INSIDE MAP")
+                         root.isPinchingMap = true
+                     } else {
+                         console.log(" -> OUTSIDE MAP")
+                     }
+                }
+
+                // Existing click logic seems to be handled by onClickDetected signal 
+                // or similar mechanism. We just track state here.
+                if (typeof onClickDetected === "function") {
+                    onClickDetected() 
+                }
+            }
+            if (gesture === "PINCH_END") {
+                root.isPinching = false
+                root.isPinchingMap = false
+            }
+        }
+        
+        function onCursorMoved(x, y) {
+             var px = x * root.width
+             var py = y * root.height
+
+             if (root.isPinchingMap) {
+                  var dx = px - root.lastCursorX
+                  var dy = py - root.lastCursorY
+                  dashboard.map.pan(dx, dy)
+             }
+             
+             root.lastCursorX = px
+             root.lastCursorY = py
         }
     }
     

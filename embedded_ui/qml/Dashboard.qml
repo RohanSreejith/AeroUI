@@ -23,6 +23,7 @@ Item {
     property alias musicPlayerPlayButtonRef: musicPlayer.playButtonRef
     property alias musicPlayerPrevButtonRef: musicPlayer.prevButtonRef
     property alias musicPlayerNextButtonRef: musicPlayer.nextButtonRef
+    property alias map: navMap  // Expose Map for gesture control
     
     // Sync activeControl with NetworkManager
     onActiveControlChanged: {
@@ -99,28 +100,33 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.margins: 20
-        columns: 12
+        columns: 2  // 50/50 Split
         columnSpacing: 20
 
-        // LEFT: Map (Span 7)
+        // LEFT: Map (Span 1 = 50%)
         Rectangle {
-            Layout.columnSpan: 7
+            Layout.columnSpan: 1
             Layout.fillHeight: true
             Layout.fillWidth: true
+            Layout.preferredWidth: parent.width * 0.5 // Force 50% width
             color: "#111827" // gray-900ish
             radius: 20
             border.color: "#33ffffff"
             clip: true
             
             // Map Placeholder
-            NavigationMap { anchors.fill: parent }
+            NavigationMap { 
+                id: navMap
+                anchors.fill: parent 
+            }
         }
 
-        // RIGHT: Media & Shortcuts (Span 5)
+        // RIGHT: Media & Shortcuts (Span 1 = 50%)
         ColumnLayout {
-            Layout.columnSpan: 5
+            Layout.columnSpan: 1
             Layout.fillHeight: true
             Layout.fillWidth: true
+            Layout.preferredWidth: parent.width * 0.5 // Force 50% width
             spacing: 20
 
             // Media Player

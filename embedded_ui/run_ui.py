@@ -226,7 +226,10 @@ class GestureThread(QThread):
                                 else:
                                     # Fingers separated - reset pinch state
                                     if pinch_distance > self.pinch_threshold * 1.5:  # Hysteresis
-                                        self.is_pinching = False
+                                        if self.is_pinching:
+                                            self.is_pinching = False
+                                            self.gesture_detected.emit("PINCH_END")
+                                            print("[GestureThread] Pinch released")
                                 
                                 # Calculate hand center (using wrist and middle finger base)
                                 hand_center_x = (landmarks[0].x + landmarks[9].x) / 2
