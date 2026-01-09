@@ -6,6 +6,8 @@ Rectangle {
     id: root
     property var mState: NetworkManager.mediaState || {}
     property alias playButtonRef: playButton
+    property alias prevButtonRef: prevButton
+    property alias nextButtonRef: nextButton
     
     color: "#1f2937"
     radius: 20
@@ -111,6 +113,7 @@ Rectangle {
             
             // Previous
             Rectangle {
+                id: prevButton
                 width: 36
                 height: 36
                 radius: 18
@@ -126,7 +129,7 @@ Rectangle {
                 
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: console.log("Previous track")
+                    onClicked: NetworkManager.prevTrack()
                 }
             }
             
@@ -155,6 +158,7 @@ Rectangle {
             
             // Next
             Rectangle {
+                id: nextButton
                 width: 36
                 height: 36
                 radius: 18
@@ -170,7 +174,7 @@ Rectangle {
                 
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: console.log("Next track")
+                    onClicked: NetworkManager.nextTrack()
                 }
             }
         }

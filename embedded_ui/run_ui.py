@@ -8,6 +8,7 @@ from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterSingletonInstance
 from PySide6.QtCore import QObject, QUrl, Signal, Slot, Property, QThread, Qt
 from PySide6.QtQuick import QQuickView
+from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
 # --- Gesture Recognition Logic (Mocking the C++ port in Python) ---
 class GestureThread(QThread):
@@ -173,20 +174,22 @@ class GestureThread(QThread):
                                 
                                 # Depth filtering: Calculate hand size to determine if hand is too far
                                 wrist = landmarks[0]  # Wrist
-                                middle_tip = landmarks[12]  # Middle finger tip
+                                middle_mcp = landmarks[9]  # Middle finger MCP (Knuckle) - Stable for fist
                                 
-                                # Calculate hand size (distance from wrist to middle fingertip)
-                                hand_size = math.sqrt(
-                                    (middle_tip.x - wrist.x) ** 2 + 
-                                    (middle_tip.y - wrist.y) ** 2
+                                # Calculate hand scale (distance from wrist to middle knuckle)
+                                # This is better than tip because it doesn't shrink when you make a fist
+                                hand_scale = math.sqrt(
+                                    (middle_mcp.x - wrist.x) ** 2 + 
+                                    (middle_mcp.y - wrist.y) ** 2
                                 )
                                 
                                 # Skip this hand if it's too small (too far away)
-                                if hand_size < self.min_hand_size:
+                                # Threshold adjusted ~0.08 for palm length (approx corresponds to 0.2 full hand)
+                                if hand_scale < 0.08:
                                     # Draw a red X on the image to show hand is too far
                                     h, w, _ = image_rgb.shape
-                                    center_x = int((wrist.x + middle_tip.x) / 2 * w)
-                                    center_y = int((wrist.y + middle_tip.y) / 2 * h)
+                                    center_x = int((wrist.x + middle_mcp.x) / 2 * w)
+                                    center_y = int((wrist.y + middle_mcp.y) / 2 * h)
                                     cv2.putText(image_rgb, "TOO FAR", (center_x - 40, center_y), 
                                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
                                     cv2.line(image_rgb, (center_x - 30, center_y - 30), 
@@ -470,10 +473,37 @@ class NetworkManager(QObject):
     def __init__(self):
         super().__init__()
         self._vehicle_state = {"driver_temp": 22, "volume": 50} # Start at 50%
-        self._media_state = {"title": "Lennon's Ghost", "artist": "The Beatles", "is_playing": True}
+        
+        # Audio Player Setup
+        self.player = QMediaPlayer()
+        self.audio_output = QAudioOutput()
+        self.player.setAudioOutput(self.audio_output)
+        
+        # Playlist (Streaming URLs)
+        self.playlist = [
+            {"title": "Creative Minds", "artist": "Bensound", "url": "https://www.bensound.com/bensound-music/bensound-creativeminds.mp3"},
+            {"title": "Ukulele", "artist": "Bensound", "url": "https://www.bensound.com/bensound-music/bensound-ukulele.mp3"},
+            {"title": "Jazzy Frenchy", "artist": "Bensound", "url": "https://www.bensound.com/bensound-music/bensound-jazzyfrenchy.mp3"},
+            {"title": "Little Idea", "artist": "Bensound", "url": "https://www.bensound.com/bensound-music/bensound-littleidea.mp3"}
+        ]
+        self.current_track_index = 0
+        
+        self._media_state = {
+            "title": self.playlist[0]["title"], 
+            "artist": self.playlist[0]["artist"], 
+            "is_playing": False,
+            "duration": 0,
+            "position": 0
+        }
         self._last_volume = 50
         self._active_control = "temp"  # Default to temp control
-
+        
+        # Initialize volume
+        self.audio_output.setVolume(self._vehicle_state["volume"] / 100.0)
+        
+        # Load first track
+        self.player.setSource(QUrl(self.playlist[0]["url"]))
+        
     @Property(str, notify=activeControlChanged)
     def activeControl(self):
         return self._active_control
@@ -484,6 +514,10 @@ class NetworkManager(QObject):
             self._active_control = value
             self.activeControlChanged.emit()
             print(f"[NetworkManager] Active control changed to: {value}")
+            
+            # Sync volume focus
+            if value == "volume":
+                 self.audio_output.setVolume(self._vehicle_state["volume"] / 100.0)
 
     @Property(int, notify=volumeChanged)
     def volume(self):
@@ -492,11 +526,38 @@ class NetworkManager(QObject):
     @Slot()
     def togglePlayback(self):
         """Toggle play/pause state"""
-        new_state = self._media_state.copy()
-        new_state["is_playing"] = not self._media_state.get("is_playing", False)
-        self._media_state = new_state
+        if self.player.playbackState() == QMediaPlayer.PlayingState:
+            self.player.pause()
+            self._media_state["is_playing"] = False
+        else:
+            self.player.play()
+            self._media_state["is_playing"] = True
+            
         self.mediaStateChanged.emit()
-        print(f"[NetworkManager] Playback {'paused' if not new_state['is_playing'] else 'playing'}")
+        print(f"[NetworkManager] Playback {'paused' if not self._media_state['is_playing'] else 'playing'}")
+
+    @Slot()
+    def nextTrack(self):
+        """Play next track"""
+        self.current_track_index = (self.current_track_index + 1) % len(self.playlist)
+        self.load_track()
+        
+    @Slot()
+    def prevTrack(self):
+        """Play previous track"""
+        self.current_track_index = (self.current_track_index - 1 + len(self.playlist)) % len(self.playlist)
+        self.load_track()
+        
+    def load_track(self):
+        track = self.playlist[self.current_track_index]
+        self.player.setSource(QUrl(track["url"]))
+        self.player.play()
+        
+        self._media_state["title"] = track["title"]
+        self._media_state["artist"] = track["artist"]
+        self._media_state["is_playing"] = True
+        self.mediaStateChanged.emit()
+        print(f"[NetworkManager] Playing: {track['title']}")
 
     @Property("QVariantMap", notify=vehicleStateChanged)
     def vehicleState(self):
@@ -519,6 +580,7 @@ class NetworkManager(QObject):
                 new_state = self._vehicle_state.copy()
                 new_state["volume"] = 0
                 self._vehicle_state = new_state
+                self.audio_output.setVolume(0) # Hardware mute
                 print(f"[NetworkManager] Muted. Volume is now: {self._vehicle_state['volume']}")
                 changed = True
                 
@@ -537,6 +599,7 @@ class NetworkManager(QObject):
                 
                 if new_state["volume"] != self._vehicle_state["volume"]:
                     self._vehicle_state = new_state
+                    self.audio_output.setVolume(new_state["volume"] / 100.0) # Hardware vol
                     print(f"[NetworkManager] Volume increased to: {self._vehicle_state['volume']}")
                     changed = True
             elif self._active_control == "temp":
@@ -554,6 +617,7 @@ class NetworkManager(QObject):
                 new_state["volume"] = max(0, self._vehicle_state["volume"] - 5)
                 if new_state["volume"] != self._vehicle_state["volume"]:
                     self._vehicle_state = new_state
+                    self.audio_output.setVolume(new_state["volume"] / 100.0) # Hardware vol
                     print(f"[NetworkManager] Volume decreased to: {self._vehicle_state['volume']}")
                     changed = True
             elif self._active_control == "temp":

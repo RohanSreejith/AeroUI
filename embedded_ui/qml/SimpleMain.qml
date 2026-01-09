@@ -63,6 +63,54 @@ Rectangle {
                 }
             }
             
+            // Check Music Player Controls
+            console.log("Checking Music Player buttons...")
+            
+            // Play/Pause
+            if (dashboard.musicPlayerPlayButtonRef) {
+                var pos = dashboard.musicPlayerPlayButtonRef.mapToItem(root, 0, 0)
+                console.log("PLAY Button Bounds:", pos.x, pos.y, dashboard.musicPlayerPlayButtonRef.width, dashboard.musicPlayerPlayButtonRef.height)
+                
+                if (cursorX >= pos.x && cursorX <= pos.x + dashboard.musicPlayerPlayButtonRef.width &&
+                    cursorY >= pos.y && cursorY <= pos.y + dashboard.musicPlayerPlayButtonRef.height) {
+                    console.log("✓ Clicked PLAY button via gesture")
+                    NetworkManager.togglePlayback()
+                    return
+                }
+            } else {
+                console.log("PLAY button ref is null/undefined")
+            }
+
+            // Previous Track
+            if (dashboard.musicPlayerPrevButtonRef) {
+                var pos = dashboard.musicPlayerPrevButtonRef.mapToItem(root, 0, 0)
+                console.log("PREV Button Bounds:", pos.x, pos.y, dashboard.musicPlayerPrevButtonRef.width, dashboard.musicPlayerPrevButtonRef.height)
+
+                if (cursorX >= pos.x && cursorX <= pos.x + dashboard.musicPlayerPrevButtonRef.width &&
+                    cursorY >= pos.y && cursorY <= pos.y + dashboard.musicPlayerPrevButtonRef.height) {
+                    console.log("✓ Clicked PREV button via gesture")
+                    NetworkManager.prevTrack()
+                    return
+                }
+            } else {
+                console.log("PREV button ref is null/undefined")
+            }
+
+            // Next Track
+            if (dashboard.musicPlayerNextButtonRef) {
+                var pos = dashboard.musicPlayerNextButtonRef.mapToItem(root, 0, 0)
+                console.log("NEXT Button Bounds:", pos.x, pos.y, dashboard.musicPlayerNextButtonRef.width, dashboard.musicPlayerNextButtonRef.height)
+
+                if (cursorX >= pos.x && cursorX <= pos.x + dashboard.musicPlayerNextButtonRef.width &&
+                    cursorY >= pos.y && cursorY <= pos.y + dashboard.musicPlayerNextButtonRef.height) {
+                    console.log("✓ Clicked NEXT button via gesture")
+                    NetworkManager.nextTrack()
+                    return
+                }
+            } else {
+                console.log("NEXT button ref is null/undefined")
+            }
+            
             console.log("✗ Click missed all buttons")
         }
     }

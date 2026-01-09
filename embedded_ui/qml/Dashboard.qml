@@ -21,6 +21,8 @@ Item {
     property alias tempButtonRef: tempButton
     property alias volumeButtonRef: volumeButton
     property alias musicPlayerPlayButtonRef: musicPlayer.playButtonRef
+    property alias musicPlayerPrevButtonRef: musicPlayer.prevButtonRef
+    property alias musicPlayerNextButtonRef: musicPlayer.nextButtonRef
     
     // Sync activeControl with NetworkManager
     onActiveControlChanged: {
@@ -126,11 +128,14 @@ Item {
                 id: musicPlayer
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.minimumHeight: 200 // Prevent collapse
             }
 
             // Shortcuts
             RowLayout {
                 Layout.preferredHeight: 80
+                Layout.maximumHeight: 80
+                Layout.fillHeight: false
                 spacing: 20
                 
                 // Temp Shortcut
