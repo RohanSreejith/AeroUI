@@ -11,7 +11,66 @@ Rectangle {
 
     // Load the full Dashboard component
     Dashboard {
+        id: dashboard
         anchors.fill: parent
+    }
+    
+    // Handle gesture clicks
+    Connections {
+        target: GestureController
+        function onClickDetected() {
+            // Get cursor position in screen coordinates
+            var cursorX = GestureController.cursorX * root.width
+            var cursorY = GestureController.cursorY * root.height
+            
+            console.log("Click detected at cursor position:", cursorX, cursorY)
+            
+            // Check if cursor is over temp button
+            if (dashboard.tempButtonRef) {
+                var tempPos = dashboard.tempButtonRef.mapToItem(root, 0, 0)
+                var tempBounds = {
+                    x: tempPos.x,
+                    y: tempPos.y,
+                    width: dashboard.tempButtonRef.width,
+                    height: dashboard.tempButtonRef.height
+                }
+                console.log("TEMP button bounds:", tempBounds.x, tempBounds.y, tempBounds.width, tempBounds.height)
+                
+                if (cursorX >= tempPos.x && cursorX <= tempPos.x + dashboard.tempButtonRef.width &&
+                    cursorY >= tempPos.y && cursorY <= tempPos.y + dashboard.tempButtonRef.height) {
+                    console.log("✓ Clicked TEMP button via gesture")
+                    dashboard.activeControl = "temp"
+                    return
+                }
+            }
+            
+            // Check if cursor is over volume button
+            if (dashboard.volumeButtonRef) {
+                var volPos = dashboard.volumeButtonRef.mapToItem(root, 0, 0)
+                var volBounds = {
+                    x: volPos.x,
+                    y: volPos.y,
+                    width: dashboard.volumeButtonRef.width,
+                    height: dashboard.volumeButtonRef.height
+                }
+                console.log("VOL button bounds:", volBounds.x, volBounds.y, volBounds.width, volBounds.height)
+                
+                if (cursorX >= volPos.x && cursorX <= volPos.x + dashboard.volumeButtonRef.width &&
+                    cursorY >= volPos.y && cursorY <= volPos.y + dashboard.volumeButtonRef.height) {
+                    console.log("✓ Clicked VOLUME button via gesture")
+                    dashboard.activeControl = "volume"
+                    return
+                }
+            }
+            
+            console.log("✗ Click missed all buttons")
+        }
+    }
+    
+    // Virtual hand pointer overlay
+    VirtualCursor {
+        anchors.fill: parent
+        z: 100  // On top of everything including camera
     }
     
     // --- Live Camera Feed Overlay ---
@@ -85,7 +144,7 @@ Rectangle {
                 font.bold: true
             }
             Text {
-                text: "(Sim: 'F'/'O' | Cam: 'C' | Test: 'T')"
+                text: "(F/O: Mute | P: Click | Arrows: Move Cursor | C: Cam | T: Test)"
                 color: "#555555"
                 font.pixelSize: 11
                 anchors.verticalCenter: parent.verticalCenter
@@ -121,6 +180,28 @@ Rectangle {
             GestureController.cycleCamera();
         } else if (event.key === Qt.Key_T) {
             GestureController.toggleTestPattern();
+        } else if (event.key === Qt.Key_P) {
+            GestureController.simulateGesture("PINCH_CLICK");
+        } else if (event.key === Qt.Key_Left) {
+            GestureController.setCursorPosition(
+                Math.max(0, GestureController.cursorX - 0.02),
+                GestureController.cursorY
+            );
+        } else if (event.key === Qt.Key_Right) {
+            GestureController.setCursorPosition(
+                Math.min(1, GestureController.cursorX + 0.02),
+                GestureController.cursorY
+            );
+        } else if (event.key === Qt.Key_Up) {
+            GestureController.setCursorPosition(
+                GestureController.cursorX,
+                Math.max(0, GestureController.cursorY - 0.02)
+            );
+        } else if (event.key === Qt.Key_Down) {
+            GestureController.setCursorPosition(
+                GestureController.cursorX,
+                Math.min(1, GestureController.cursorY + 0.02)
+            );
         }
     }
 }

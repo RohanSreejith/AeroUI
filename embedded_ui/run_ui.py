@@ -13,6 +13,7 @@ from PySide6.QtQuick import QQuickView
 class GestureThread(QThread):
     gesture_detected = Signal(str)
     frame_captured = Signal() # Signal when a new frame is ready
+    cursor_moved = Signal(float, float)  # Signal for cursor position (normalized x, y)
     
     def __init__(self, camera_index=0): # Scan from 0
         super().__init__()
@@ -32,6 +33,11 @@ class GestureThread(QThread):
         self.rotation_accumulator = 0.0  # Accumulated rotation angle
         self.last_rotation_time = time.time()
         self.rotation_threshold = 180  # Degrees needed to trigger rotation gesture
+        
+        # Pinch detection tracking
+        self.is_pinching = False
+        self.last_pinch_time = 0
+        self.pinch_threshold = 0.05  # Normalized distance threshold for pinch detection
         
         try:
             import mediapipe as mp
@@ -152,6 +158,7 @@ class GestureThread(QThread):
                     try:
                         # Convert to MediaPipe Image format
                         import mediapipe as mp
+                        import math
                         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
                         
                         # Detect hand landmarks
@@ -159,8 +166,89 @@ class GestureThread(QThread):
                         
                         if detection_result.hand_landmarks:
                             for hand_landmarks in detection_result.hand_landmarks:
-                                fingers = []
                                 landmarks = hand_landmarks
+                                
+                                # Emit cursor position based on index finger tip (landmark 8)
+                                index_tip_x = landmarks[8].x  # Normalized 0-1
+                                index_tip_y = landmarks[8].y  # Normalized 0-1
+                                self.cursor_moved.emit(index_tip_x, index_tip_y)
+                                
+                                # Detect pinch gesture (thumb tip to index finger tip distance)
+                                thumb_tip = landmarks[4]  # Thumb tip
+                                index_tip = landmarks[8]  # Index finger tip
+                                
+                                # Calculate Euclidean distance
+                                pinch_distance = math.sqrt(
+                                    (thumb_tip.x - index_tip.x) ** 2 + 
+                                    (thumb_tip.y - index_tip.y) ** 2
+                                )
+                                
+                                current_time = time.time()
+                                
+                                # Detect pinch (fingers close together)
+                                if pinch_distance < self.pinch_threshold:
+                                    if not self.is_pinching and (current_time - self.last_pinch_time > 0.5):
+                                        # Pinch started - emit click
+                                        self.is_pinching = True
+                                        self.last_pinch_time = current_time
+                                        self.gesture_detected.emit("PINCH_CLICK")
+                                        print(f"[GestureThread] Pinch detected! Distance: {pinch_distance:.3f}")
+                                else:
+                                    # Fingers separated - reset pinch state
+                                    if pinch_distance > self.pinch_threshold * 1.5:  # Hysteresis
+                                        self.is_pinching = False
+                                
+                                # Calculate hand center (using wrist and middle finger base)
+                                hand_center_x = (landmarks[0].x + landmarks[9].x) / 2
+                                hand_center_y = (landmarks[0].y + landmarks[9].y) / 2
+                                
+                                # Track hand position for rotation detection
+                                current_time = time.time()
+                                self.hand_history.append((hand_center_x, hand_center_y, current_time))
+                                
+                                # Detect rotation if we have enough history
+                                if len(self.hand_history) >= 3:
+                                    # Calculate rotation angle
+                                    angles = []
+                                    for i in range(len(self.hand_history) - 1):
+                                        x1, y1, _ = self.hand_history[i]
+                                        x2, y2, _ = self.hand_history[i + 1]
+                                        
+                                        # Calculate angle between consecutive positions
+                                        dx = x2 - x1
+                                        dy = y2 - y1
+                                        if abs(dx) > 0.01 or abs(dy) > 0.01:  # Ignore tiny movements
+                                            angle = math.atan2(dy, dx) * 180 / math.pi
+                                            angles.append(angle)
+                                    
+                                    # Calculate rotation direction
+                                    if len(angles) >= 2:
+                                        angle_diff = 0
+                                        for i in range(len(angles) - 1):
+                                            diff = angles[i + 1] - angles[i]
+                                            # Normalize to -180 to 180
+                                            if diff > 180:
+                                                diff -= 360
+                                            elif diff < -180:
+                                                diff += 360
+                                            angle_diff += diff
+                                        
+                                        # Accumulate rotation
+                                        self.rotation_accumulator += angle_diff
+                                        
+                                        # Check if rotation threshold reached
+                                        if abs(self.rotation_accumulator) > self.rotation_threshold:
+                                            if current_time - self.last_rotation_time > 0.5:  # Debounce
+                                                if self.rotation_accumulator > 0:
+                                                    self.gesture_detected.emit("ROTATE_CW")
+                                                else:
+                                                    self.gesture_detected.emit("ROTATE_CCW")
+                                                
+                                                self.rotation_accumulator = 0
+                                                self.last_rotation_time = current_time
+                                
+                                # Finger counting for fist/open palm
+                                fingers = []
                                 
                                 # Thumb (compare X coordinates)
                                 if landmarks[4].x < landmarks[3].x:  # THUMB_TIP vs THUMB_IP
@@ -183,6 +271,12 @@ class GestureThread(QThread):
                                     self.gesture_detected.emit("FIST")
                                 elif total_fingers == 5:
                                     self.gesture_detected.emit("OPEN_PALM")
+                        else:
+                            # No hand detected, reset rotation tracking
+                            if len(self.hand_history) > 0:
+                                self.hand_history.clear()
+                                self.rotation_accumulator = 0
+                                
                     except Exception as e:
                         pass  # Silently ignore detection errors
                             
@@ -201,15 +295,41 @@ class GestureController(QObject):
     isCameraVisibleChanged = Signal()
     gestureDetected = Signal(str)
     frameReady = Signal() # Signal for QML to repaint
+    cursorMoved = Signal(float, float)  # Signal when cursor position changes
+    cursorXChanged = Signal()
+    cursorYChanged = Signal()
+    clickDetected = Signal()  # Signal when pinch click is detected
 
     def __init__(self):
         super().__init__()
         self._isCameraVisible = True
         self._currentGesture = ""
+        self._cursorX = 0.5  # Normalized 0-1
+        self._cursorY = 0.5  # Normalized 0-1
         
         # Start Detection Thread
         self.thread = GestureThread()
         self.thread.gesture_detected.connect(self.on_gesture_from_thread)
+        self.thread.cursor_moved.connect(self.on_cursor_moved)
+        self.thread.start()
+
+    @Slot(float, float)
+    def on_cursor_moved(self, x, y):
+        """Update cursor position from gesture thread"""
+        if self._cursorX != x or self._cursorY != y:
+            self._cursorX = x
+            self._cursorY = y
+            self.cursorXChanged.emit()
+            self.cursorYChanged.emit()
+            self.cursorMoved.emit(x, y)
+
+    @Property(float, notify=cursorXChanged)
+    def cursorX(self):
+        return self._cursorX
+
+    @Property(float, notify=cursorYChanged)
+    def cursorY(self):
+        return self._cursorY
         # We need to bridge the thread signal to the main thread logic if we want to update the provider here,
         # but the provider is in main scope. 
         # Actually, let's let the main polling loop handle it or connect it here?
@@ -224,6 +344,11 @@ class GestureController(QObject):
         self._currentGesture = gesture
         print(f"Gesture Detected: {gesture}")
         self.gestureDetected.emit(gesture)
+        
+        # Emit click signal for pinch gestures
+        if gesture == "PINCH_CLICK":
+            print("[GestureController] Emitting clickDetected signal")
+            self.clickDetected.emit()
             
     # Allow manual simulation/override
     @Slot(str)
@@ -240,6 +365,11 @@ class GestureController(QObject):
     def toggleTestPattern(self):
         print("[RunUI] Toggling Test Pattern...")
         self.thread.toggle_test_pattern()
+    
+    @Slot(float, float)
+    def setCursorPosition(self, x, y):
+        """Manually set cursor position (for keyboard control)"""
+        self.on_cursor_moved(x, y)
 
     @Property(bool, notify=isCameraVisibleChanged)
     def isCameraVisible(self):
@@ -259,12 +389,25 @@ class NetworkManager(QObject):
     vehicleStateChanged = Signal()
     mediaStateChanged = Signal()
     volumeChanged = Signal() # Explicit signal for volume
+    activeControlChanged = Signal()  # Signal when active control changes
 
     def __init__(self):
         super().__init__()
         self._vehicle_state = {"driver_temp": 22, "volume": 50} # Start at 50%
         self._media_state = {"title": "Lennon's Ghost", "artist": "The Beatles", "is_playing": True}
         self._last_volume = 50
+        self._active_control = "temp"  # Default to temp control
+
+    @Property(str, notify=activeControlChanged)
+    def activeControl(self):
+        return self._active_control
+
+    @activeControl.setter
+    def activeControl(self, value):
+        if self._active_control != value:
+            self._active_control = value
+            self.activeControlChanged.emit()
+            print(f"[NetworkManager] Active control changed to: {value}")
 
     @Property(int, notify=volumeChanged)
     def volume(self):
@@ -302,6 +445,40 @@ class NetworkManager(QObject):
                 self._vehicle_state = new_state
                 print(f"[NetworkManager] Unmuted. Volume is now: {self._vehicle_state['volume']}")
                 changed = True
+                
+        elif gesture_name == "ROTATE_CW":
+            # Increase volume or temperature based on active control
+            if self._active_control == "volume":
+                new_state = self._vehicle_state.copy()
+                new_state["volume"] = min(100, self._vehicle_state["volume"] + 5)
+                if new_state["volume"] != self._vehicle_state["volume"]:
+                    self._vehicle_state = new_state
+                    print(f"[NetworkManager] Volume increased to: {self._vehicle_state['volume']}")
+                    changed = True
+            elif self._active_control == "temp":
+                new_state = self._vehicle_state.copy()
+                new_state["driver_temp"] = min(30, self._vehicle_state["driver_temp"] + 1)
+                if new_state["driver_temp"] != self._vehicle_state["driver_temp"]:
+                    self._vehicle_state = new_state
+                    print(f"[NetworkManager] Temperature increased to: {self._vehicle_state['driver_temp']}")
+                    changed = True
+                
+        elif gesture_name == "ROTATE_CCW":
+            # Decrease volume or temperature based on active control
+            if self._active_control == "volume":
+                new_state = self._vehicle_state.copy()
+                new_state["volume"] = max(0, self._vehicle_state["volume"] - 5)
+                if new_state["volume"] != self._vehicle_state["volume"]:
+                    self._vehicle_state = new_state
+                    print(f"[NetworkManager] Volume decreased to: {self._vehicle_state['volume']}")
+                    changed = True
+            elif self._active_control == "temp":
+                new_state = self._vehicle_state.copy()
+                new_state["driver_temp"] = max(16, self._vehicle_state["driver_temp"] - 1)
+                if new_state["driver_temp"] != self._vehicle_state["driver_temp"]:
+                    self._vehicle_state = new_state
+                    print(f"[NetworkManager] Temperature decreased to: {self._vehicle_state['driver_temp']}")
+                    changed = True
                 
         if changed:
             print("[NetworkManager] Emitting State Change Signal")

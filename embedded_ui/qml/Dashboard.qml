@@ -16,6 +16,15 @@ Item {
     // Local State
     property string activeControl: "temp" // 'temp' or 'volume'
     property date currentTime: new Date()
+    
+    // Expose button references for gesture click detection
+    property alias tempButtonRef: tempButton
+    property alias volumeButtonRef: volumeButton
+    
+    // Sync activeControl with NetworkManager
+    onActiveControlChanged: {
+        NetworkManager.activeControl = activeControl
+    }
 
     Timer {
         interval: 1000; running: true; repeat: true
@@ -136,6 +145,7 @@ Item {
                 
                 // Temp Shortcut
                 Rectangle {
+                    id: tempButton
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     radius: 20
@@ -147,11 +157,16 @@ Item {
                         Text { text: "TEMP"; color: "white"; font.bold: true }
                         Text { text: "CONTROL"; color: "gray"; font.pixelSize: 10 }
                     }
-                    MouseArea { anchors.fill: parent; onClicked: root.activeControl = "temp" }
+                    MouseArea { 
+                        id: tempMouseArea
+                        anchors.fill: parent
+                        onClicked: root.activeControl = "temp"
+                    }
                 }
 
                 // Volume Shortcut
                 Rectangle {
+                    id: volumeButton
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     radius: 20
@@ -163,7 +178,11 @@ Item {
                         Text { text: "VOL"; color: "white"; font.bold: true }
                         Text { text: "CONTROL"; color: "gray"; font.pixelSize: 10 }
                     }
-                    MouseArea { anchors.fill: parent; onClicked: root.activeControl = "volume" }
+                    MouseArea {
+                        id: volumeMouseArea
+                        anchors.fill: parent
+                        onClicked: root.activeControl = "volume"
+                    }
                 }
             }
         }
