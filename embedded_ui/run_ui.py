@@ -501,8 +501,20 @@ class NetworkManager(QObject):
         # Initialize volume
         self.audio_output.setVolume(self._vehicle_state["volume"] / 100.0)
         
+        # Connect signals
+        self.player.durationChanged.connect(self._on_duration_changed)
+        self.player.positionChanged.connect(self._on_position_changed)
+        
         # Load first track
         self.player.setSource(QUrl(self.playlist[0]["url"]))
+
+    def _on_duration_changed(self, duration):
+        self._media_state["duration"] = duration
+        self.mediaStateChanged.emit()
+
+    def _on_position_changed(self, position):
+        self._media_state["position"] = position
+        self.mediaStateChanged.emit()
         
     @Property(str, notify=activeControlChanged)
     def activeControl(self):

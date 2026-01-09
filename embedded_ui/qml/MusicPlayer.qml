@@ -14,6 +14,14 @@ Rectangle {
     border.color: "#374151"
     border.width: 1
     
+    function formatTime(ms) {
+        if (!ms || ms < 0) return "0:00"
+        var totalSeconds = Math.floor(ms / 1000)
+        var minutes = Math.floor(totalSeconds / 60)
+        var seconds = totalSeconds % 60
+        return minutes + ":" + (seconds < 10 ? "0" : "") + seconds
+    }
+    
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 20
@@ -80,7 +88,7 @@ Rectangle {
             color: "#374151"
             
             Rectangle {
-                width: parent.width * 0.6
+                width: (root.mState.duration > 0) ? (parent.width * (root.mState.position / root.mState.duration)) : 0
                 height: parent.height
                 radius: parent.radius
                 color: "#60a5fa"
@@ -88,19 +96,19 @@ Rectangle {
         }
 
         // Time Labels
-        Row {
+        RowLayout {
             Layout.fillWidth: true
             
             Text {
-                text: "1:23"
+                text: formatTime(root.mState.position)
                 color: "#6b7280"
                 font.pixelSize: 10
             }
             
-            Item { width: parent.width - 60 }
+            Item { Layout.fillWidth: true }
             
             Text {
-                text: "3:45"
+                text: formatTime(root.mState.duration)
                 color: "#6b7280"
                 font.pixelSize: 10
             }
