@@ -130,7 +130,7 @@ Item {
 
             // Shortcuts
             RowLayout {
-                Layout.preferredHeight: 120
+                Layout.preferredHeight: 80
                 spacing: 20
                 
                 // Temp Shortcut
@@ -186,7 +186,7 @@ Item {
         anchors.right: parent.right
         anchors.margins: 20
         anchors.bottomMargin: 20
-        height: 100
+        height: 60
         radius: 20
         color: "#111827"
         border.color: root.activeControl === "temp" ? "#3b82f6" : "#33ffffff"
@@ -198,7 +198,7 @@ Item {
             Text { 
                 text: (vState["driver_temp"] || 22) + "°C"
                 color: "white"
-                font.pixelSize: 40
+                font.pixelSize: 28
                 font.weight: Font.Thin
             }
             Text { text: "AUTO"; color: "gray" }

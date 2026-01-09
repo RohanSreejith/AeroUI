@@ -148,10 +148,8 @@ class GestureThread(QThread):
                          else:
                              self.black_frame_count = 0
 
-                # Store frame for GUI display (RGB)
+                # Convert to RGB for processing and display
                 image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                self.latest_frame = image_rgb
-                self.frame_captured.emit()
                 
                 frame_count += 1
 
@@ -270,8 +268,53 @@ class GestureThread(QThread):
                                 total_fingers = sum(fingers)
                                 if total_fingers == 0:
                                     self.gesture_detected.emit("FIST")
-                                elif total_fingers == 5:
-                                    self.gesture_detected.emit("OPEN_PALM")
+                                
+                                # Draw hand landmarks on the image
+                                h, w, _ = image_rgb.shape
+                                for idx, landmark in enumerate(landmarks):
+                                    # Convert normalized coordinates to pixel coordinates
+                                    cx, cy = int(landmark.x * w), int(landmark.y * h)
+                                    
+                                    # Draw different colors for different landmark types
+                                    if idx in [4, 8, 12, 16, 20]:  # Fingertips
+                                        color = (0, 255, 0)  # Green for fingertips
+                                        radius = 8
+                                    elif idx == 0:  # Wrist
+                                        color = (255, 0, 255)  # Magenta for wrist
+                                        radius = 10
+                                    else:  # Other joints
+                                        color = (255, 255, 0)  # Yellow for other joints
+                                        radius = 5
+                                    
+                                    # Draw circle on the landmark
+                                    cv2.circle(image_rgb, (cx, cy), radius, color, -1)
+                                    cv2.circle(image_rgb, (cx, cy), radius + 2, (255, 255, 255), 2)  # White border
+                                
+                                # Draw connections between landmarks
+                                connections = [
+                                    # Thumb
+                                    (0, 1), (1, 2), (2, 3), (3, 4),
+                                    # Index finger
+                                    (0, 5), (5, 6), (6, 7), (7, 8),
+                                    # Middle finger
+                                    (0, 9), (9, 10), (10, 11), (11, 12),
+                                    # Ring finger
+                                    (0, 13), (13, 14), (14, 15), (15, 16),
+                                    # Pinky
+                                    (0, 17), (17, 18), (18, 19), (19, 20),
+                                    # Palm
+                                    (5, 9), (9, 13), (13, 17)
+                                ]
+                                
+                                for connection in connections:
+                                    start_idx, end_idx = connection
+                                    start = landmarks[start_idx]
+                                    end = landmarks[end_idx]
+                                    
+                                    start_point = (int(start.x * w), int(start.y * h))
+                                    end_point = (int(end.x * w), int(end.y * h))
+                                    
+                                    cv2.line(image_rgb, start_point, end_point, (100, 100, 255), 2)
                         else:
                             # No hand detected, reset rotation tracking
                             if len(self.hand_history) > 0:
@@ -280,6 +323,10 @@ class GestureThread(QThread):
                                 
                     except Exception as e:
                         pass  # Silently ignore detection errors
+                
+                # Store the processed frame for GUI display (with landmarks if detected)
+                self.latest_frame = image_rgb
+                self.frame_captured.emit()
                             
                 time.sleep(0.05) # Limit FPS
             
