@@ -40,6 +40,10 @@ class GestureThread(QThread):
         self.last_pinch_time = 0
         self.pinch_threshold = 0.05  # Normalized distance threshold for pinch detection
         
+        # Depth filtering (invisible plane)
+        self.min_hand_size = 0.2  # Minimum hand size (wrist to middle fingertip) to be recognized
+                                    # Smaller hands are too far away and will be ignored
+        
         try:
             import mediapipe as mp
             from mediapipe.tasks import python
@@ -166,6 +170,30 @@ class GestureThread(QThread):
                         if detection_result.hand_landmarks:
                             for hand_landmarks in detection_result.hand_landmarks:
                                 landmarks = hand_landmarks
+                                
+                                # Depth filtering: Calculate hand size to determine if hand is too far
+                                wrist = landmarks[0]  # Wrist
+                                middle_tip = landmarks[12]  # Middle finger tip
+                                
+                                # Calculate hand size (distance from wrist to middle fingertip)
+                                hand_size = math.sqrt(
+                                    (middle_tip.x - wrist.x) ** 2 + 
+                                    (middle_tip.y - wrist.y) ** 2
+                                )
+                                
+                                # Skip this hand if it's too small (too far away)
+                                if hand_size < self.min_hand_size:
+                                    # Draw a red X on the image to show hand is too far
+                                    h, w, _ = image_rgb.shape
+                                    center_x = int((wrist.x + middle_tip.x) / 2 * w)
+                                    center_y = int((wrist.y + middle_tip.y) / 2 * h)
+                                    cv2.putText(image_rgb, "TOO FAR", (center_x - 40, center_y), 
+                                               cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+                                    cv2.line(image_rgb, (center_x - 30, center_y - 30), 
+                                            (center_x + 30, center_y + 30), (255, 0, 0), 3)
+                                    cv2.line(image_rgb, (center_x + 30, center_y - 30), 
+                                            (center_x - 30, center_y + 30), (255, 0, 0), 3)
+                                    continue  # Skip to next hand (if any)
                                 
                                 # Emit cursor position based on index finger tip (landmark 8)
                                 index_tip_x = landmarks[8].x  # Normalized 0-1
