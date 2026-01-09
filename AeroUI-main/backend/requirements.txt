@@ -1,0 +1,15 @@
+# Core Django Framework
+Django>=5.0,<6.0
+
+# Django REST Framework for API endpoints
+djangorestframework>=3.14.0
+
+# CORS headers for cross-origin requests (frontend-backend communication)
+django-cors-headers>=4.0.0
+
+# Database (SQLite is included with Python, but listed for clarity)
+# For production, consider PostgreSQL: psycopg2-binary>=2.9.0
+
+# Optional: For better development experience
+# python-decouple>=3.8  # For environment variable management
+# django-debug-toolbar>=4.0.0  # For debugging in development
