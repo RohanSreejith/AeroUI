@@ -32,7 +32,8 @@ class GestureThread(QThread):
         self.hand_history = deque(maxlen=10)  # Track last 10 hand positions
         self.rotation_accumulator = 0.0  # Accumulated rotation angle
         self.last_rotation_time = time.time()
-        self.rotation_threshold = 180  # Degrees needed to trigger rotation gesture
+        self.rotation_threshold = 540  # Degrees needed (1.5 full circles - very deliberate motion)
+        self.min_movement_distance = 0.08  # Increased minimum distance to filter small movements
         
         # Pinch detection tracking
         self.is_pinching = False
@@ -130,8 +131,8 @@ class GestureThread(QThread):
                 self.current_brightness = mean_val
                 
                 # Add Debug Overlay to the image itself
-                cv2.putText(image, f"Cam: {self.camera_index} | Bright: {mean_val:.1f}", (10, 30), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                # cv2.putText(image, f"Cam: {self.camera_index} | Bright: {mean_val:.1f}", (10, 30), 
+                #            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
                 
                 # Check for Black Frames (Auto-Switch Logic)
                 if not self.use_test_pattern:
@@ -412,6 +413,15 @@ class NetworkManager(QObject):
     @Property(int, notify=volumeChanged)
     def volume(self):
         return self._vehicle_state["volume"]
+    
+    @Slot()
+    def togglePlayback(self):
+        """Toggle play/pause state"""
+        new_state = self._media_state.copy()
+        new_state["is_playing"] = not self._media_state.get("is_playing", False)
+        self._media_state = new_state
+        self.mediaStateChanged.emit()
+        print(f"[NetworkManager] Playback {'paused' if not new_state['is_playing'] else 'playing'}")
 
     @Property("QVariantMap", notify=vehicleStateChanged)
     def vehicleState(self):
@@ -437,20 +447,19 @@ class NetworkManager(QObject):
                 print(f"[NetworkManager] Muted. Volume is now: {self._vehicle_state['volume']}")
                 changed = True
                 
-        elif gesture_name == "OPEN_PALM":
-            # Unmute
-            if self._vehicle_state["volume"] == 0:
-                new_state = self._vehicle_state.copy()
-                new_state["volume"] = self._last_volume
-                self._vehicle_state = new_state
-                print(f"[NetworkManager] Unmuted. Volume is now: {self._vehicle_state['volume']}")
-                changed = True
+        # OPEN_PALM unmute removed - volume auto-unmutes when increased
                 
         elif gesture_name == "ROTATE_CW":
             # Increase volume or temperature based on active control
             if self._active_control == "volume":
                 new_state = self._vehicle_state.copy()
-                new_state["volume"] = min(100, self._vehicle_state["volume"] + 5)
+                # Auto-unmute if currently muted
+                if self._vehicle_state["volume"] == 0 and self._last_volume > 0:
+                    new_state["volume"] = self._last_volume
+                    print(f"[NetworkManager] Auto-unmuted to: {new_state['volume']}")
+                else:
+                    new_state["volume"] = min(100, self._vehicle_state["volume"] + 5)
+                
                 if new_state["volume"] != self._vehicle_state["volume"]:
                     self._vehicle_state = new_state
                     print(f"[NetworkManager] Volume increased to: {self._vehicle_state['volume']}")

@@ -20,6 +20,7 @@ Item {
     // Expose button references for gesture click detection
     property alias tempButtonRef: tempButton
     property alias volumeButtonRef: volumeButton
+    property alias musicPlayerPlayButtonRef: musicPlayer.playButtonRef
     
     // Sync activeControl with NetworkManager
     onActiveControlChanged: {
@@ -121,21 +122,10 @@ Item {
             spacing: 20
 
             // Media Player
-            Rectangle {
+            MusicPlayer { 
+                id: musicPlayer
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                color: "#111827"
-                radius: 20
-                border.color: "#33ffffff"
-                
-                MusicPlayer { 
-                    anchors.fill: parent 
-                    title: mState["title"] || "Not Playing"
-                    artist: mState["artist"] || "Unknown"
-                    isPlaying: mState["is_playing"] || false
-                    volume: vState["volume"] || 50
-                    controlActive: root.activeControl === "volume"
-                }
             }
 
             // Shortcuts
