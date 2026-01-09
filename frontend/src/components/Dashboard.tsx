@@ -43,11 +43,10 @@ const Dashboard = () => {
             if (!isPlaying) {
                 audioRef.current.pause();
             } else {
-                // Ensure it plays if it was paused
                 audioRef.current.play().catch(e => console.log("Autoplay blocked/pending:", e));
             }
         }
-    }, [volume, isPlaying]); // Removed currentSongIndex dependency as 'key' handles renewal
+    }, [volume, isPlaying, currentSongIndex]);
 
     const handleNext = () => {
         setCurrentSongIndex(prev => (prev + 1) % PLAYLIST.length);
