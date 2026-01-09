@@ -16,9 +16,9 @@ const DigitalTwinCursor = () => {
             animate={{ x, y }}
             transition={{
                 type: "spring",
-                stiffness: 800,
-                damping: 30,
-                mass: 0.2
+                stiffness: 1500, // Snappier
+                damping: 20,     // Less drag
+                mass: 0.1        // Lighter
             }}
         >
             {/* Cursor Graphic */}

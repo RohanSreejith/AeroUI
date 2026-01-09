@@ -13,6 +13,8 @@ interface GestureContextType {
     setHandPosition: (pos: HandPosition | null) => void;
     cursorMode: 'default' | 'click' | 'drag';
     setCursorMode: (mode: 'default' | 'click' | 'drag') => void;
+    isCameraVisible: boolean;
+    setIsCameraVisible: (visible: boolean) => void;
 }
 
 const GestureContext = createContext<GestureContextType | undefined>(undefined);
@@ -20,9 +22,10 @@ const GestureContext = createContext<GestureContextType | undefined>(undefined);
 export const GestureProvider = ({ children }: { children: ReactNode }) => {
     const [handPosition, setHandPosition] = useState<HandPosition | null>(null);
     const [cursorMode, setCursorMode] = useState<'default' | 'click' | 'drag'>('default');
+    const [isCameraVisible, setIsCameraVisible] = useState(true);
 
     return (
-        <GestureContext.Provider value={{ handPosition, setHandPosition, cursorMode, setCursorMode }}>
+        <GestureContext.Provider value={{ handPosition, setHandPosition, cursorMode, setCursorMode, isCameraVisible, setIsCameraVisible }}>
             {children}
         </GestureContext.Provider>
     );

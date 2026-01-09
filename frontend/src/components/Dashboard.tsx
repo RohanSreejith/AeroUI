@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Settings, Music, Fan, Map, Phone } from 'lucide-react';
+import React, { useState } from 'react';
+import { Settings, Music, Fan, Map, Phone, Camera } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useGesture } from '../context/GestureContext';
 
 const Dashboard = () => {
     const [activeTab, setActiveTab] = useState('home');
+    const { isCameraVisible, setIsCameraVisible } = useGesture();
 
     return (
         <div className="flex h-full w-full bg-gradient-to-br from-automotive-900 to-automotive-800 text-white p-6 gap-6">
@@ -14,6 +16,14 @@ const Dashboard = () => {
                 <NavIcon icon={<Fan />} active={activeTab === 'climate'} onClick={() => setActiveTab('climate')} />
                 <NavIcon icon={<Map />} active={activeTab === 'nav'} onClick={() => setActiveTab('nav')} />
                 <NavIcon icon={<Phone />} active={activeTab === 'phone'} onClick={() => setActiveTab('phone')} />
+
+                <div className="flex-1"></div>
+
+                <NavIcon
+                    icon={<Camera />}
+                    active={isCameraVisible}
+                    onClick={() => setIsCameraVisible(!isCameraVisible)}
+                />
             </nav>
 
             {/* Main Content */}
