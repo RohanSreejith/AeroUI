@@ -581,6 +581,11 @@ class NetworkManager(QObject):
                 new_state["volume"] = 0
                 self._vehicle_state = new_state
                 self.audio_output.setVolume(0) # Hardware mute
+                
+                # Switch active control to volume so subsequent rotation controls volume
+                if self._active_control != "volume":
+                    self.activeControl = "volume"
+                    
                 print(f"[NetworkManager] Muted. Volume is now: {self._vehicle_state['volume']}")
                 changed = True
                 
