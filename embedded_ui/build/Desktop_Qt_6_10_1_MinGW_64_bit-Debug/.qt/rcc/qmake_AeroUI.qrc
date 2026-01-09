@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="/AeroUI">
+    <file alias="qmldir">D:/Personal Projects/Hackerfx/Gesture_Detection/embedded_ui/build/Desktop_Qt_6_10_1_MinGW_64_bit-Debug/AeroUI/qmldir</file>
+  </qresource>
+</RCC>
+

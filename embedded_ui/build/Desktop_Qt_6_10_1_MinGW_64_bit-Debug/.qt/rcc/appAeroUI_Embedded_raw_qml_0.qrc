@@ -1,0 +1,9 @@
+<RCC>
+  <qresource prefix="/AeroUI/">
+    <file alias="qml/Main.qml">D:/Personal Projects/Hackerfx/Gesture_Detection/embedded_ui/qml/Main.qml</file>
+    <file alias="qml/Dashboard.qml">D:/Personal Projects/Hackerfx/Gesture_Detection/embedded_ui/qml/Dashboard.qml</file>
+    <file alias="qml/MusicPlayer.qml">D:/Personal Projects/Hackerfx/Gesture_Detection/embedded_ui/qml/MusicPlayer.qml</file>
+    <file alias="qml/NavigationMap.qml">D:/Personal Projects/Hackerfx/Gesture_Detection/embedded_ui/qml/NavigationMap.qml</file>
+  </qresource>
+</RCC>
+
