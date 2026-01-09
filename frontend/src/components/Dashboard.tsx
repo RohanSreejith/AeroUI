@@ -99,7 +99,8 @@ const Dashboard = () => {
             const timeout = setTimeout(() => setGestureEvent(null), 300);
             return () => clearTimeout(timeout);
         }
-    }, [gestureEvent, controlMode, isMuted, volume, prevVolume]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [gestureEvent, controlMode]);
 
     const currentSong = PLAYLIST[currentSongIndex];
 
