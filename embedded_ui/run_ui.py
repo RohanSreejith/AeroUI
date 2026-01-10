@@ -201,11 +201,11 @@ class GestureThread(QThread):
                                             (center_x - 30, center_y + 30), (255, 0, 0), 3)
                                     continue  # Skip to next hand (if any)
                                 
-                                # Emit cursor position based on index finger tip (landmark 8)
-                                # Add Margin/Gain to allow reaching edges without going off-cam
-                                margin = 0.2 # Increased gain (was 0.1)
-                                raw_x = landmarks[8].x
-                                raw_y = landmarks[8].y
+                                # Emit cursor position based on MIDPOINT of stick (Index Tip & Thumb Tip)
+                                # This prevents cursor jumping down when pinching
+                                margin = 0.2 
+                                raw_x = (landmarks[8].x + landmarks[4].x) / 2
+                                raw_y = (landmarks[8].y + landmarks[4].y) / 2
                                 
                                 # Map [margin, 1-margin] to [0, 1]
                                 index_tip_x = max(0.0, min(1.0, (raw_x - margin) / (1 - 2 * margin)))
