@@ -9,6 +9,9 @@ from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterSingletonInstance
 from PySide6.QtCore import QObject, QUrl, Signal, Slot, Property, QThread, Qt
 from PySide6.QtQuick import QQuickView
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
+import urllib.request
+import json
+import threading
 
 # --- Gesture Recognition Logic (Mocking the C++ port in Python) ---
 class GestureThread(QThread):
@@ -199,8 +202,15 @@ class GestureThread(QThread):
                                     continue  # Skip to next hand (if any)
                                 
                                 # Emit cursor position based on index finger tip (landmark 8)
-                                index_tip_x = landmarks[8].x  # Normalized 0-1
-                                index_tip_y = landmarks[8].y  # Normalized 0-1
+                                # Add Margin/Gain to allow reaching edges without going off-cam
+                                margin = 0.2 # Increased gain (was 0.1)
+                                raw_x = landmarks[8].x
+                                raw_y = landmarks[8].y
+                                
+                                # Map [margin, 1-margin] to [0, 1]
+                                index_tip_x = max(0.0, min(1.0, (raw_x - margin) / (1 - 2 * margin)))
+                                index_tip_y = max(0.0, min(1.0, (raw_y - margin) / (1 - 2 * margin)))
+                                
                                 self.cursor_moved.emit(index_tip_x, index_tip_y)
                                 
                                 # Detect pinch gesture (thumb tip to index finger tip distance)
@@ -475,7 +485,11 @@ class NetworkManager(QObject):
 
     def __init__(self):
         super().__init__()
-        self._vehicle_state = {"driver_temp": 22, "volume": 50} # Start at 50%
+        self._vehicle_state = {"driver_temp": 22, "volume": 50, "outdoor_temp": "--"} # Start at 50%
+        
+        # Start weather thread
+        self.weather_thread = threading.Thread(target=self._fetch_weather_loop, daemon=True)
+        self.weather_thread.start()
         
         # Audio Player Setup
         self.player = QMediaPlayer()
@@ -582,6 +596,26 @@ class NetworkManager(QObject):
     @Property("QVariantMap", notify=mediaStateChanged)
     def mediaState(self):
         return self._media_state
+
+    def _fetch_weather_loop(self):
+        while True:
+            try:
+                 # Kochi coordinates
+                url = "https://api.open-meteo.com/v1/forecast?latitude=9.9312&longitude=76.2673&current_weather=true"
+                with urllib.request.urlopen(url, timeout=10) as response:
+                    if response.status == 200:
+                        data = json.loads(response.read().decode('utf-8'))
+                        temp = data.get("current_weather", {}).get("temperature")
+                        if temp is not None:
+                            new_state = self._vehicle_state.copy()
+                            new_state["outdoor_temp"] = str(int(round(temp)))
+                            self._vehicle_state = new_state
+                            self.vehicleStateChanged.emit()
+                            print(f"[NetworkManager] Weather updated: {new_state['outdoor_temp']}C")
+            except Exception as e:
+                print(f"[NetworkManager] Weather fetch error: {e}")
+            
+            time.sleep(900) # Update every 15 minutes
         
     def handle_gesture(self, gesture_name):
         print(f"[NetworkManager] Handling Gesture: {gesture_name}")

@@ -77,7 +77,11 @@ Item {
             // Temp Status
             Row {
                 spacing: 5
-                Text { text: "1°C"; color: "white"; font.pixelSize: 18 }
+                Text { 
+                    text: (NetworkManager.vehicleState.outdoor_temp || "--") + "°C" 
+                    color: "white" 
+                    font.pixelSize: 18 
+                }
             }
             // Camera Toggle
             Rectangle {
